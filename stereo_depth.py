@@ -67,8 +67,8 @@ def get_8_rand():        # get 8 random index to fit in Af = 0
     
     rand_ind_list = []
     for i in range(8):
-        if i not in rand_ind_list:
-            rand_ind_list.append(random.randint(0,int(size/10)-1))
+#        if i not in rand_ind_list:
+        rand_ind_list.append(random.randint(0,int(size/10)-1))
     
     for ind in rand_ind_list:
         key_X1.append(ind)
@@ -120,16 +120,24 @@ for i in range(2000):
         index1, index2 = get_index(key_x)
         F_mat = F
 F_mat = np.array([[ 2.56502805e-19,2.54139887e-17,-5.07574184e-15],[-4.80711816e-31,-2.43696301e-18,1.00000000e+00],
-                  [9.53904157e-29,-1.00000000e+00,7.53666453e-17]])
+                  [9.53904157e-29,-1.00000000e+00,7.53666453e-17]])      ## seeded
 print(initial_F)
 print(index1)
 index1 = np.array(index1)
 index2 = np.array(index2)
     
 ##################  Esential Matrix #####################
-    
+## dataset 1    
 K1 = np.array([[5299.313, 0, 1263.818], [0, 5299.313, 977.763], [0, 0, 1]])
 K2 = np.array([[5299.313, 0, 1438.004], [0, 5299.313, 977.763], [0, 0, 1]])
+
+## dataset 2    
+#K1 = np.array([[4396.869, 0, 1353.072], [0, 4396.869, 989.702], [0, 0, 1]])
+#K2 = np.array([[4396.869, 0, 1538.86], [0, 4396.869, 989.702], [0, 0, 1]])
+
+## dataset 3 
+#K1 = np.array([[5806.559, 0, 1429.219], [0, 5806.559 ,  993.403], [0, 0, 1]])
+#K2 = np.array([[5806.559, 0, 1538.86], [0, 5806.559,  993.403], [0, 0, 1]])
 
 E = np.matmul(np.transpose(K2),np.matmul(F_mat,K1))
 
@@ -152,10 +160,12 @@ print("Pose of Camera two ")
 print("########")
 R, T = get_pose(E,K2)
 
-######## Rectification ##########
+############ Rectification ####################
 h1, w1, c = img1.shape
 h2, w2, c = img2.shape
 _, H1, H2 = cv.stereoRectifyUncalibrated(np.float32(index1), np.float32(index2), F_mat, imgSize=(w1, h1))
+print("H1/n ", H1)
+print ("H2/n ", H2)
 
 img1_rectified = cv.warpPerspective(img1, H1, (w1, h1))
 img2_rectified = cv.warpPerspective(img2, H2, (w2, h2))
@@ -164,7 +174,7 @@ img_rec2 = copy.deepcopy(img2_rectified)
 
 X_1 = np.linalg.inv(H2) 
 F_new = np.matmul(np.transpose(X_1),np.matmul(F_mat,np.linalg.inv(H1)))
-print(F_new)
+print("Rectified F/n :",F_new)
 ############ fixing initial points #################
 
 new_kp1 = []
@@ -244,7 +254,7 @@ def diff_disp(img1,img2,x,y,count):
     
     winblock1 = img1[x:x + window[0],y:x + window[1]]
     winblock2 = img2[x:x + window[0],y + count:y + count + window[1]]
-    diff = -(winblock1.sum() - winblock2.sum())
+    diff = (winblock2.sum() - winblock1.sum())
     #print(np.sum(winblock1))
     return diff
 
@@ -291,7 +301,25 @@ heatmap = cv.cvtColor(heatmap, cv.COLOR_RGB2BGR)
 ########################################################################
 
 ###################### Depth Map #######################################
+def normalize(matrix):
+    maxvalue = matrix.max()  
+    minvalue = matrix.min()  
+    span = maxvalue - minvalue
+    
+    matrix = (matrix - minvalue)/span
+    matrix = matrix*255         
+    matrix = matrix.astype(np.uint8)
+    
+    return matrix
 
+disp = disparity_image.astype(np.float32)
+disp[disp == 0] = 0.01
+depth = 1./(5*np.copy(disp))      # 1/5 because image was resized by 0.2
+B = 177.288
+f = 5299.313
+depth = depth*B*f
+depth = normalize(depth)
+depthmap = cv.applyColorMap(depth, cv.COLORMAP_JET)
 
 ########################################################################
 
@@ -299,9 +327,11 @@ heatmap = cv.cvtColor(heatmap, cv.COLOR_RGB2BGR)
 plt.imshow(disparity_image)
 matching_result = cv.drawMatches(img1_rectified, kp1, img2_rectified, kp2, match, None, flags=2)
 cv.imshow("matching results", matching_result)
-#cv.imshow("gray", img_gray1)
 cv.imshow("disparity_image", disparity_image)
 cv.imshow('heatmap', heatmap)
+cv.imshow('depthmap', depthmap)
+cv.imshow('depth', depth)
+#cv.imshow("gray", img_gray1)
 #cv.imshow("image", img5)
 #cv.imshow("image2", img6)
 cv.waitKey(0)
