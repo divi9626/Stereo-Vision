@@ -95,7 +95,7 @@ def get_index(key_x):
 #F = K_H.reshape(3,3)
 
 
-################## RANSAC #######################
+################## RANSAC ###############
 initial_F = 10000
 F_mat = None
 for i in range(2000):
@@ -119,8 +119,15 @@ for i in range(2000):
         initial_F = abs(ans_F)
         index1, index2 = get_index(key_x)
         F_mat = F
-F_mat = np.array([[ 2.56502805e-19,2.54139887e-17,-5.07574184e-15],[-4.80711816e-31,-2.43696301e-18,1.00000000e+00],
-                  [9.53904157e-29,-1.00000000e+00,7.53666453e-17]])      ## seeded
+
+#### Enforcing Ransac #####
+U_f , sig_f, V_t_f = np.linalg.svd(F_mat)
+sig_f[-1] = 0
+F_mat = np.matmul(U_f,np.matmul(np.diag(sig_f),V_t_f))
+###########################
+
+#F_mat = np.array([[ 2.56502805e-19,2.54139887e-17,-5.07574184e-15],[-4.80711816e-31,-2.43696301e-18,1.00000000e+00],
+#                  [9.53904157e-29,-1.00000000e+00,7.53666453e-17]])      ## seeded
 print(initial_F)
 print(index1)
 index1 = np.array(index1)
@@ -226,10 +233,10 @@ lines1 = lines1.reshape(-1,3)
 lines2 = lines2.reshape(-1,3)
 img3,img4 = drawlines(img1_rectified,img2_rectified,lines1,new_kp1,new_kp2)
 img5,img6 = drawlines(img2_rectified,img1_rectified,lines2,new_kp2,new_kp1)
-#cv.imshow("image", img5)
-#cv.imshow("image2", img6)
-#cv.waitKey(0)
-#cv.destroyAllWindows
+cv.imshow("image", img5)
+cv.imshow("image2", img6)
+cv.waitKey(0)
+cv.destroyAllWindows
         
 ################ correspondance (SSD) ########################
 window = (7,7)
